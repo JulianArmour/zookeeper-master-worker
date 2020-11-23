@@ -7,12 +7,12 @@ import java.net.*;
 
 //To get the process id.
 import java.lang.management.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException.*;
-import org.apache.zookeeper.data.*;
-import org.apache.zookeeper.KeeperException.Code;
 
 // TODO
 // Replace XX with your group number.
@@ -26,8 +26,7 @@ import org.apache.zookeeper.KeeperException.Code;
 //		you manage the code more modularly.
 //	REMEMBER !! ZK client library is single thread - Watches & CallBacks should not be used for time consuming tasks.
 //		Ideally, Watches & CallBacks should only be used to assign the "work" to a separate thread inside your program.
-public class DistProcess implements Watcher
-                                      , AsyncCallback.ChildrenCallback {
+public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, AsyncCallback.StringCallback {
   ZooKeeper zk;
   String zkServer, pinfo;
   boolean isMaster = false;
@@ -44,13 +43,19 @@ public class DistProcess implements Watcher
     try {
       runForMaster();  // See if you can become the master (i.e, no other master exists)
       isMaster = true;
-      getTasks(); // Install monitoring on any new tasks that will be created.
       // TODO monitor for worker tasks?
     } catch (NodeExistsException nee) {
       isMaster = false;
-    } // TODO: What else will you need if this was a worker process?
-
+    }
     System.out.println("DISTAPP : Role : " + " I will be functioning as " + (isMaster ? "master" : "worker"));
+
+    if (isMaster) {
+      getTasks(); // Install monitoring on any new tasks that will be created.
+    } else {
+      //TODO if worker then:
+//    Worker worker = new Worker(info...);
+//    worker.run()
+    }
   }
 
   // Master fetching task znodes...
@@ -66,93 +71,121 @@ public class DistProcess implements Watcher
   }
 
   public void process(WatchedEvent e) {
-    //Get watcher notifications.
-
-    //!! IMPORTANT !!
-    // Do not perform any time consuming/waiting steps here
-    //	including in other functions called from here.
-    // 	Your will be essentially holding up ZK client library
-    //	thread and you will not get other notifications.
-    //	Instead include another thread in your program logic that
-    //   does the time consuming "work" and notify that thread from here.
-
+    //Get tasks watcher notifications.
     System.out.println("DISTAPP : Event received : " + e);
-    // Master should be notified if any new znodes are added to tasks.
-    if (e.getType() == Watcher.Event.EventType.NodeChildrenChanged && e.getPath().equals("/dist25/tasks")) {
-      // There has been changes to the children of the node.
-      // We are going to re-install the Watch as well as request for the list of the children.
-      getTasks();
-    }
+    getTasks();
   }
 
   //Asynchronous callback that is invoked by the zk.getChildren request.
   public void processResult(int rc, String path, Object ctx, List<String> children) {
-
-    //!! IMPORTANT !!
-    // Do not perform any time consuming/waiting steps here
-    //	including in other functions called from here.
-    // 	Your will be essentially holding up ZK client library
-    //	thread and you will not get other notifications.
-    //	Instead include another thread in your program logic that
-    //   does the time consuming "work" and notify that thread from here.
-
-    // This logic is for master !!
-    //Every time a new task znode is created by the client, this will be invoked.
-
-    // TODO: Filter out and go over only the newly created task znodes.
-    //		Also have a mechanism to assign these tasks to a "Worker" process.
-    //		The worker must invoke the "compute" function of the Task send by the client.
-    //What to do if you do not have a free worker process?
-    System.out.println("DISTAPP : processResult : " + rc + ":" + path + ":" + ctx);
-    for (String c : children) {
-      System.out.println(c);
-      try {
-        //TODO There is quite a bit of worker specific activities here,
-        // that should be moved done by a process function as the worker.
-
-        //TODO!! This is not a good approach, you should get the data using an async version of the API.
-        byte[] taskSerial = zk.getData("/dist25/tasks/" + c, false, null);
-
-        // Re-construct our task object.
-        ByteArrayInputStream bis = new ByteArrayInputStream(taskSerial);
-        ObjectInput in = new ObjectInputStream(bis);
-        DistTask dt = (DistTask) in.readObject();
-
-        //Execute the task.
-        //TODO: Again, time consuming stuff. Should be done by some other thread and not inside a callback!
-        dt.compute();
-
-        // Serialize our Task object back to a byte array!
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(bos);
-        oos.writeObject(dt);
-        oos.flush();
-        taskSerial = bos.toByteArray();
-
-        // Store it inside the result node.
-        zk.create("/dist25/tasks/" + c + "/result", taskSerial, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-        //zk.create("/dist25/tasks/"+c+"/result", ("Hello from "+pinfo).getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-      } catch (NodeExistsException nee) {
-        System.out.println(nee);
-      } catch (KeeperException ke) {
-        System.out.println(ke);
-      } catch (InterruptedException ie) {
-        System.out.println(ie);
-      } catch (IOException io) {
-        System.out.println(io);
-      } catch (ClassNotFoundException cne) {
-        System.out.println(cne);
-      }
-    }
+    //TODO: implement pseudocode
+//    on cb1(children):
+//    for each child in children:
+//    createNode(child/handled, handledCB, ctx=child)
   }
 
-  public static void main(String args[]) throws Exception {
+  // callback for creating a /handled znode under a task
+  @Override
+  public void processResult(int rc, String path, Object taskNodeId, String name) {
+    //TODO: implement pseudocode
+//    on handledCB(ctx=child):
+//    if OK:
+//    spawn thread TaskDistributor(child)
+  }
+
+  public static void main(String[] args) throws Exception {
     //Create a new process
     //Read the ZooKeeper ensemble information from the environment variable.
     DistProcess dt = new DistProcess(System.getenv("ZKSERVER"));
     dt.startProcess();
 
-    //Replace this with an approach that will make sure that the process is up and running forever.
-    Thread.sleep(10000);
+    Object barrier = new Object();
+    while (true) {
+      synchronized (barrier) {
+        barrier.wait();
+      }
+    }
+  }
+
+  private static class TaskDistributor implements Runnable, Watcher {
+    private final String taskId;
+    private final ZooKeeper zk;
+    private boolean workerListChanged = false;
+
+    public TaskDistributor(String taskId, ZooKeeper zk) {
+      this.taskId = taskId;
+      this.zk = zk;
+    }
+
+    List<String> getAvailableWorkers() {
+      try {
+        return zk.getChildren("/dist25/available_workers", this);
+      } catch (KeeperException e) {
+        e.printStackTrace();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+      return Collections.emptyList();
+    }
+
+    private boolean assignTask(List<String> workers) {
+      for (String worker : workers) {
+        try {
+          zk.create("/dist25/worker_tasks/"+worker, taskId.getBytes(), Ids.OPEN_ACL_UNSAFE,
+                    CreateMode.PERSISTENT);
+          return true; // successfully assigned the task
+        } catch (KeeperException e) {
+          // getting Code.NODEEXISTS is normal, but other codes are not
+          if (e.code() != Code.NODEEXISTS) {
+            e.printStackTrace();
+            return false;
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return false;
+        }
+      }
+      return false; // couldn't assign the task to any of the workers
+    }
+
+    @Override
+    public void run() {
+      System.out.println("Thread="+Thread.currentThread().getName()+" attempting to assign task="+taskId);
+      while (true) {
+        if (Thread.interrupted()) {
+          System.out.println("Master distribution thread="+Thread.currentThread().getName()+" was interrupted while " +
+                             "attempting to assign task="+taskId);
+          return;
+        }
+        // get the list of available (idle) workers
+        List<String> availableWorkers = getAvailableWorkers();
+        // try to assign a task to a worker
+        boolean success = assignTask(availableWorkers);
+        if (success) {
+          return;
+        }
+        //couldn't assign the task, wait for notification from watch to try again
+        System.out.println("Master distribution thread="+Thread.currentThread().getName()+"Couldn't assign task yet," +
+                           " retrying when worker list changes.");
+        synchronized (this) {
+          try {
+            while (!workerListChanged) {
+              this.wait();
+            }
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          workerListChanged = false;
+        }
+      }
+    }
+
+    @Override
+    public void process(WatchedEvent watchedEvent) {
+      synchronized (this) {
+        workerListChanged = true;
+        this.notifyAll();
+      }
+    }
   }
 }

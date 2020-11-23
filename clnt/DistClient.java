@@ -45,7 +45,6 @@ public class DistClient implements Watcher
 		byte [] dTaskSerial = bos.toByteArray();
 
 		// Create a sequential znode with the Task object as its data.
-		// TODO replace XX with your group number.
 		taskNodeName = zk.create("/dist25/tasks/task-", dTaskSerial, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
 		//taskNodeName = zk.create("/distXX/tasks/task-", pinfo.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
 		System.out.println("DISTAPP : TaskNode : " + taskNodeName);
@@ -144,6 +143,7 @@ public class DistClient implements Watcher
 
 		// Cleanup, we do not need our task and result nodes anymore.
 		zk.delete(taskNodeName+"/result", -1, null, null);
+		// TODO zk.delete(taskNodeName+"/handled", -1, null, null);
 		zk.delete(taskNodeName, -1, null, null);
 
 		// Free the main thread to go ahead and terminate.
