@@ -99,3 +99,4 @@ fabric.properties
 hs_err_pid*
 
 /zk.iml
+/bin/
