@@ -143,7 +143,7 @@ public class DistClient implements Watcher
 
 		// Cleanup, we do not need our task and result nodes anymore.
 		zk.delete(taskNodeName+"/result", -1, null, null);
-		// TODO zk.delete(taskNodeName+"/handled", -1, null, null);
+		zk.delete(taskNodeName+"/handled", -1, null, null);
 		zk.delete(taskNodeName, -1, null, null);
 
 		// Free the main thread to go ahead and terminate.

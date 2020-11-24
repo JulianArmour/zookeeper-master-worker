@@ -188,7 +188,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
     }
   }
 
-  private static class Worker implements Watcher, DataCallback{
+  private static class Worker implements Watcher, DataCallback {
     private final ZooKeeper zk;
     private String workerId;
 
@@ -233,14 +233,15 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
           taskSerial = bos.toByteArray();
           //write back result
           zk.create("/dist25/tasks/" + taskId + "/result", taskSerial, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-          //reset worker
-          zk.delete("/dist25/worker_tasks/"+workerId, -1);
-          String workerPath = zk.create("/dist25/available_workers/worker-", "".getBytes(), Ids.OPEN_ACL_UNSAFE,
-                                        CreateMode.EPHEMERAL_SEQUENTIAL);
-          workerId = workerPath.replace("/dist25/available_workers/", "");
-          zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
-        } catch (KeeperException | IOException | ClassNotFoundException | InterruptedException e) {
+        } catch (KeeperException e) {
+          if (e.code() != Code.NONODE)
+            e.printStackTrace();
+        } catch (IOException | ClassNotFoundException | InterruptedException e) {
           e.printStackTrace();
+        } finally {
+          //reset worker
+          zk.delete("/dist25/worker_tasks/"+workerId, -1, null, null);
+          init();
         }
       });
       executor.start();
@@ -248,7 +249,10 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
 
     @Override
     public void process(WatchedEvent watchedEvent) {
-      zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
+      if (watchedEvent.getType() == Event.EventType.NodeCreated)
+        zk.getData("/dist25/worker_tasks/"+workerId, null, this, null);
+      else
+        zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
     }
   }
 }
