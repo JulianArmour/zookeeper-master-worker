@@ -38,7 +38,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
   }
 
   void startProcess() throws IOException, UnknownHostException, KeeperException, InterruptedException {
-    zk = new ZooKeeper(zkServer, 1000, null); //connect to ZK.
+    zk = new ZooKeeper(zkServer, 1000, watchedEvent -> System.out.println("ZK WATCHER CALLED")); //connect to ZK.
     try {
       runForMaster();  // See if you can become the master (i.e, no other master exists)
       isMaster = true;
@@ -62,7 +62,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
   }
 
   // Try to become the master.
-  void runForMaster() throws UnknownHostException, KeeperException, InterruptedException {
+  void runForMaster() throws KeeperException, InterruptedException {
     //Try to create an ephemeral node to be the master, put the hostname and pid of this process as the data.
     // This is an example of Synchronous API invocation as the function waits for the execution and no callback is involved..
     zk.create("/dist25/master", pinfo.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
@@ -102,7 +102,9 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
     dt.startProcess();
 
     Object barrier = new Object();
+    //noinspection InfiniteLoopStatement
     while (true) {
+      //noinspection SynchronizationOnLocalVariableOrMethodParameter
       synchronized (barrier) {
         barrier.wait();
       }
