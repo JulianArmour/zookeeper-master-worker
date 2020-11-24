@@ -38,7 +38,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
   }
 
   void startProcess() throws IOException, UnknownHostException, KeeperException, InterruptedException {
-    zk = new ZooKeeper(zkServer, 1000, this); //connect to ZK.
+    zk = new ZooKeeper(zkServer, 1000, null); //connect to ZK.
     try {
       runForMaster();  // See if you can become the master (i.e, no other master exists)
       isMaster = true;
