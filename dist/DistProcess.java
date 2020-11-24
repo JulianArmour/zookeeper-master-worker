@@ -38,11 +38,10 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
   }
 
   void startProcess() throws IOException, UnknownHostException, KeeperException, InterruptedException {
-    zk = new ZooKeeper(zkServer, 1000, watchedEvent -> System.out.println("ZK WATCHER CALLED")); //connect to ZK.
+    zk = new ZooKeeper(zkServer, 1000, watchedEvent -> {}); //connect to ZK.
     try {
       runForMaster();  // See if you can become the master (i.e, no other master exists)
       isMaster = true;
-      // TODO monitor for worker tasks?
     } catch (NodeExistsException nee) {
       isMaster = false;
     }
