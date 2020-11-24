@@ -14,4 +14,11 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>lib</name>
+			<type>2</type>
+			<location>D:/Downloads/apache-zookeeper-3.6.2-bin/lib</location>
+		</link>
+	</linkedResources>
 </projectDescription>
