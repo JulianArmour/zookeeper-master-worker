@@ -7,12 +7,11 @@ import java.net.*;
 
 //To get the process id.
 import java.lang.management.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException.*;
+import org.apache.zookeeper.data.Stat;
 
 // TODO
 // Replace XX with your group number.
@@ -52,9 +51,8 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
     if (isMaster) {
       getTasks(); // Install monitoring on any new tasks that will be created.
     } else {
-      //TODO if worker then:
-//    Worker worker = new Worker(info...);
-//    worker.run()
+    Worker worker = new Worker(zk);
+    worker.init();
     }
   }
 
@@ -132,7 +130,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
       for (String worker : workers) {
         try {
           zk.create("/dist25/worker_tasks/"+worker, taskId.getBytes(), Ids.OPEN_ACL_UNSAFE,
-                    CreateMode.PERSISTENT);
+                    CreateMode.EPHEMERAL);
           return true; // successfully assigned the task
         } catch (KeeperException e) {
           // getting Code.NODEEXISTS is normal, but other codes are not
@@ -186,6 +184,70 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
         workerListChanged = true;
         this.notifyAll();
       }
+    }
+  }
+
+  private static class Worker implements Watcher, DataCallback{
+    private final ZooKeeper zk;
+    private String workerId;
+
+    public Worker(ZooKeeper zk) {
+      this.zk = zk;
+    }
+
+    public void init() {
+      try {
+        String workerPath = zk.create("/dist25/available_workers/worker-", "".getBytes(), Ids.OPEN_ACL_UNSAFE,
+                      CreateMode.EPHEMERAL_SEQUENTIAL);
+        workerId = workerPath.replace("/dist25/available_workers/", "");
+        zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
+      } catch (KeeperException e) {
+        e.printStackTrace();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    @Override
+    public void processResult(int rc, String path, Object ctx, byte[] taskIdBytes, Stat stat) {
+      if (Code.get(rc) == Code.NONODE)
+        return;
+      zk.delete("/dist25/available_workers/"+workerId, -1, null, null);
+      //execute work in another thread
+      Thread executor = new Thread(() -> {
+        String taskId = new String(taskIdBytes);
+        try {
+          // get task
+          byte[] taskSerial = zk.getData("/dist25/tasks/"+taskId, false, null);
+          //compute
+          ByteArrayInputStream bis = new ByteArrayInputStream(taskSerial);
+          ObjectInput in = new ObjectInputStream(bis);
+          DistTask dt = (DistTask) in.readObject();
+          dt.compute();
+          ByteArrayOutputStream bos = new ByteArrayOutputStream();
+          ObjectOutputStream oos = new ObjectOutputStream(bos);
+          oos.writeObject(dt);
+          oos.flush();
+          taskSerial = bos.toByteArray();
+          //write back result
+          zk.create("/dist25/tasks/" + taskId + "/result", taskSerial, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+          //reset worker
+          zk.delete("/dist25/worker_tasks/"+workerId, -1);
+          String workerPath = zk.create("/dist25/available_workers/worker-", "".getBytes(), Ids.OPEN_ACL_UNSAFE,
+                                        CreateMode.EPHEMERAL_SEQUENTIAL);
+          workerId = workerPath.replace("/dist25/available_workers/", "");
+          zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
+        } catch (KeeperException | IOException | ClassNotFoundException | InterruptedException e) {
+          e.printStackTrace();
+        }
+      });
+      executor.start();
+    }
+
+    @Override
+    public void process(WatchedEvent watchedEvent) {
+      zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
     }
   }
 }
