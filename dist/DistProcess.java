@@ -69,6 +69,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
   }
 
   public void process(WatchedEvent e) {
+    System.out.println("AM I A MASTER???" + isMaster);
     //Get tasks watcher notifications.
     System.out.println("DISTAPP : Event received : " + e);
     getTasks();
@@ -202,6 +203,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
         String workerPath = zk.create("/dist25/available_workers/worker-", "".getBytes(), Ids.OPEN_ACL_UNSAFE,
                       CreateMode.EPHEMERAL_SEQUENTIAL);
         workerId = workerPath.replace("/dist25/available_workers/", "");
+        System.out.println(workerId + " ready for task");
         System.out.println("exists() on /dist25/worker_tasks/"+workerId);
         zk.exists("/dist25/worker_tasks/" + workerId, this, this, null);
       } catch (KeeperException e) {
