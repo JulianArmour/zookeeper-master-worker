@@ -76,10 +76,10 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
 
   //Asynchronous callback that is invoked by the zk.getChildren request.
   public void processResult(int rc, String path, Object ctx, List<String> children) {
-      for(int i = 0; i < children.size(); i++){
-        zk.create("/dist25/tasks/"+children.get(i)+"/handled", "".getBytes(),Ids.OPEN_ACL_UNSAFE,
-                CreateMode.EPHEMERAL, this, children.get(i));
-      }
+    for (String child : children) {
+      zk.create("/dist25/tasks/" + child + "/handled", "".getBytes(), Ids.OPEN_ACL_UNSAFE,
+                CreateMode.EPHEMERAL, this, child);
+    }
   }
 
   // callback for creating a /handled znode under a task
