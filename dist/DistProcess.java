@@ -68,6 +68,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
     zk.create("/dist25/master", pinfo.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
   }
 
+  @Override
   public void process(WatchedEvent e) {
     System.out.println("AM I A MASTER???" + isMaster);
     //Get tasks watcher notifications.
@@ -76,6 +77,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
   }
 
   //Asynchronous callback that is invoked by the zk.getChildren request.
+  @Override
   public void processResult(int rc, String path, Object ctx, List<String> children) {
     for (String child : children) {
       zk.create("/dist25/tasks/" + child + "/handled", "".getBytes(), Ids.OPEN_ACL_UNSAFE,
