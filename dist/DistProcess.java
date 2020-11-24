@@ -189,7 +189,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
     }
   }
 
-  private static class Worker implements Watcher, DataCallback {
+  private static class Worker implements Watcher, DataCallback, StatCallback {
     private final ZooKeeper zk;
     private String workerId;
 
@@ -202,18 +202,8 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
         String workerPath = zk.create("/dist25/available_workers/worker-", "".getBytes(), Ids.OPEN_ACL_UNSAFE,
                       CreateMode.EPHEMERAL_SEQUENTIAL);
         workerId = workerPath.replace("/dist25/available_workers/", "");
-        System.out.println("getData on /dist25/worker_tasks/"+workerId);
-        zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
-        System.out.println("exists?");
-        zk.exists("/dist25/worker_tasks/" + workerId, watchedEvent -> {
-          System.out.println("Exists now!");
-        }, (i, s, o, stat) -> {
-          if (Code.get(i) == Code.OK) {
-            System.out.println("Exists on first try");
-          } else {
-            System.out.println("Doesn't exist on first try");
-          }
-        }, null);
+        System.out.println("exists() on /dist25/worker_tasks/"+workerId);
+        zk.exists("/dist25/worker_tasks/" + workerId, this, this, null);
       } catch (KeeperException e) {
         e.printStackTrace();
       } catch (InterruptedException e) {
@@ -266,14 +256,14 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
 
     @Override
     public void process(WatchedEvent watchedEvent) {
-      System.out.println("Watch triggered on /dist25/worker_tasks/"+workerId);
-      if (watchedEvent.getType() == Event.EventType.NodeCreated) {
-        System.out.println("worker was assigned");
-        zk.getData("/dist25/worker_tasks/" + workerId, null, this, null);
-      } else {
-        System.out.println("other event on /dist25/worker_tasks/"+workerId+": "+watchedEvent);
-        zk.getData("/dist25/worker_tasks/" + workerId, this, this, null);
-      }
+      System.out.println("Watch triggered on exist() /dist25/worker_tasks/"+workerId);
+      zk.getData("/dist25/worker_tasks/"+workerId, false, this, null);
+    }
+
+    @Override
+    public void processResult(int rc, String path, Object ctx, Stat stat) {
+      if (Code.get(rc) == Code.OK)
+        zk.getData(path, false, this, null);
     }
   }
 }
