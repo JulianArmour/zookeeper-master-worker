@@ -203,7 +203,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
                       CreateMode.EPHEMERAL_SEQUENTIAL);
         workerId = workerPath.replace("/dist25/available_workers/", "");
         System.out.println("exists() on /dist25/worker_tasks/"+workerId);
-        zk.exists("/dist25/worker_tasks/" + workerId, this, this, null);
+        zk.exists("/dist25/worker_tasks/" + workerId, Worker.this, Worker.this, null);
       } catch (KeeperException e) {
         e.printStackTrace();
       } catch (InterruptedException e) {
@@ -257,13 +257,13 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
     @Override
     public void process(WatchedEvent watchedEvent) {
       System.out.println("Watch triggered on exist() /dist25/worker_tasks/"+workerId);
-      zk.getData("/dist25/worker_tasks/"+workerId, false, this, null);
+      zk.getData("/dist25/worker_tasks/"+workerId, false, Worker.this, null);
     }
 
     @Override
     public void processResult(int rc, String path, Object ctx, Stat stat) {
       if (Code.get(rc) == Code.OK)
-        zk.getData(path, false, this, null);
+        zk.getData(path, false, Worker.this, null);
     }
   }
 }
