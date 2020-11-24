@@ -51,8 +51,8 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
     if (isMaster) {
       getTasks(); // Install monitoring on any new tasks that will be created.
     } else {
-    Worker worker = new Worker(zk);
-    worker.init();
+      Worker worker = new Worker(zk);
+      worker.init();
     }
   }
 
@@ -201,6 +201,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
         String workerPath = zk.create("/dist25/available_workers/worker-", "".getBytes(), Ids.OPEN_ACL_UNSAFE,
                       CreateMode.EPHEMERAL_SEQUENTIAL);
         workerId = workerPath.replace("/dist25/available_workers/", "");
+        System.out.println("getData on /dist25/worker_tasks/"+workerId);
         zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
       } catch (KeeperException e) {
         e.printStackTrace();
