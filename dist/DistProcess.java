@@ -1,33 +1,18 @@
-import java.io.*;
-
-import java.util.*;
-
-// To get the name of the host.
-import java.net.*;
-
-//To get the process id.
-import java.lang.management.*;
-
 import org.apache.zookeeper.*;
+import org.apache.zookeeper.KeeperException.Code;
+import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.ZooDefs.Ids;
-import org.apache.zookeeper.KeeperException.*;
 import org.apache.zookeeper.data.Stat;
 
-// TODO
-// Replace XX with your group number.
-// You may have to add other interfaces such as for threading, etc., as needed.
-// This class will contain the logic for both your master process as well as the worker processes.
-//  Make sure that the callbacks and watch do not conflict between your master's logic and worker's logic.
-//		This is important as both the master and worker may need same kind of callbacks and could result
-//			with the same callback functions.
-//	For a simple implementation I have written all the code in a single class (including the callbacks).
-//		You are free it break it apart into multiple classes, if that is your programming style or helps
-//		you manage the code more modularly.
-//	REMEMBER !! ZK client library is single thread - Watches & CallBacks should not be used for time consuming tasks.
-//		Ideally, Watches & CallBacks should only be used to assign the "work" to a separate thread inside your program.
+import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.util.Collections;
+import java.util.List;
+
 public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, AsyncCallback.StringCallback {
   ZooKeeper zk;
-  String zkServer, pinfo;
+  String zkServer;
+  String pinfo;
   boolean isMaster = false;
 
   DistProcess(String zkhost) {
@@ -37,7 +22,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
     System.out.println("DISTAPP : Process information : " + pinfo);
   }
 
-  void startProcess() throws IOException, UnknownHostException, KeeperException, InterruptedException {
+  void startProcess() throws IOException, KeeperException, InterruptedException {
     zk = new ZooKeeper(zkServer, 1000, watchedEvent -> {}); //connect to ZK.
     try {
       runForMaster();  // See if you can become the master (i.e, no other master exists)
