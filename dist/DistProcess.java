@@ -213,8 +213,13 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
 
     @Override
     public void processResult(int rc, String path, Object ctx, byte[] taskIdBytes, Stat stat) {
-      if (Code.get(rc) == Code.NONODE)
+      System.out.println("result from getData on /dist25/worker_tasks/"+workerId);
+      if (Code.get(rc) == Code.NONODE) {
+        System.out.println("/dist25/worker_tasks/"+workerId+" doesn't exist yet");
         return;
+      }
+      System.out.println("/dist25/worker_tasks/"+workerId+" getData success");
+      System.out.println("deleting "+"/dist25/available_workers/"+workerId);
       zk.delete("/dist25/available_workers/"+workerId, -1, null, null);
       //execute work in another thread
       Thread executor = new Thread(() -> {
