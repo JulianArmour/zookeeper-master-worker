@@ -76,19 +76,20 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
 
   //Asynchronous callback that is invoked by the zk.getChildren request.
   public void processResult(int rc, String path, Object ctx, List<String> children) {
-    //TODO: implement pseudocode
-//    on cb1(children):
-//    for each child in children:
-//    createNode(child/handled, handledCB, ctx=child)
+      for(int i = 0; i < children.size(); i++){
+        zk.create("/dist25/tasks/"+children.get(i)+"/handled", "".getBytes(),Ids.OPEN_ACL_UNSAFE,
+                CreateMode.EPHEMERAL, this, children.get(i));
+      }
   }
 
   // callback for creating a /handled znode under a task
   @Override
   public void processResult(int rc, String path, Object taskNodeId, String name) {
-    //TODO: implement pseudocode
-//    on handledCB(ctx=child):
-//    if OK:
-//    spawn thread TaskDistributor(child)
+    if (Code.get(rc) == Code.OK){
+      TaskDistributor td = new TaskDistributor((String) taskNodeId, zk);
+      Thread t = new Thread(td);
+      t.start();
+    }
   }
 
   public static void main(String[] args) throws Exception {
