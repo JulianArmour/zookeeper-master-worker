@@ -204,6 +204,16 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
         workerId = workerPath.replace("/dist25/available_workers/", "");
         System.out.println("getData on /dist25/worker_tasks/"+workerId);
         zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
+        System.out.println("exists?");
+        zk.exists("/dist25/worker_tasks/" + workerId, watchedEvent -> {
+          System.out.println("Exists now!");
+        }, (i, s, o, stat) -> {
+          if (Code.get(i) == Code.OK) {
+            System.out.println("Exists on first try");
+          } else {
+            System.out.println("Doesn't exist on first try");
+          }
+        }, null);
       } catch (KeeperException e) {
         e.printStackTrace();
       } catch (InterruptedException e) {
