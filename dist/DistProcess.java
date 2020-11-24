@@ -132,6 +132,7 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
         try {
           zk.create("/dist25/worker_tasks/"+worker, taskId.getBytes(), Ids.OPEN_ACL_UNSAFE,
                     CreateMode.EPHEMERAL);
+          System.out.println("Assigned "+taskId+" to worker "+worker);
           return true; // successfully assigned the task
         } catch (KeeperException e) {
           // getting Code.NODEEXISTS is normal, but other codes are not
@@ -255,10 +256,14 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
 
     @Override
     public void process(WatchedEvent watchedEvent) {
-      if (watchedEvent.getType() == Event.EventType.NodeCreated)
-        zk.getData("/dist25/worker_tasks/"+workerId, null, this, null);
-      else
-        zk.getData("/dist25/worker_tasks/"+workerId, this, this, null);
+      System.out.println("Watch triggered on /dist25/worker_tasks/"+workerId);
+      if (watchedEvent.getType() == Event.EventType.NodeCreated) {
+        System.out.println("worker was assigned");
+        zk.getData("/dist25/worker_tasks/" + workerId, null, this, null);
+      } else {
+        System.out.println("other event on /dist25/worker_tasks/"+workerId+": "+watchedEvent);
+        zk.getData("/dist25/worker_tasks/" + workerId, this, this, null);
+      }
     }
   }
 }
