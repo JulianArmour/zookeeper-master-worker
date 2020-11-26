@@ -54,7 +54,6 @@ public class DistProcess implements Watcher , AsyncCallback.ChildrenCallback, As
 
   @Override
   public void process(WatchedEvent e) {
-    System.out.println("AM I A MASTER???" + isMaster);
     //Get tasks watcher notifications.
     System.out.println("DISTAPP : Event received : " + e);
     getTasks();
